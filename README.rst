@@ -3,7 +3,18 @@ PyPika - Python Query Builder
 
 .. _intro_start:
 
-|BuildStatus|  |CoverageStatus|  |Codacy|  |Docs|  |PyPi|  |License|
+|License|
+
+
+Fork
+----
+
+This is a Memfault fork of PyPika that adds support for the ClickHouse ``SETTINGS`` clause
+via ``ClickHouseQueryBuilder.settings()``. It tracks upstream and carries only that change.
+It is not supported by Memfault for external use.
+
+We disabled mypy in CI because it was 'red' before our changes.
+
 
 Abstract
 --------

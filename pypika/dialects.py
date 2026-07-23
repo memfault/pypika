@@ -810,6 +810,7 @@ class ClickHouseQueryBuilder(QueryBuilder):
         self._sample_offset = None
         self._distinct_on = []
         self._limit_by = None
+        self._settings: dict[str, Any] | None = None
 
     def __copy__(self) -> ClickHouseQueryBuilder:
         newone = super().__copy__()
@@ -824,6 +825,11 @@ class ClickHouseQueryBuilder(QueryBuilder):
     def sample(self, sample: int, offset: int | None = None) -> None:
         self._sample = sample
         self._sample_offset = offset
+
+    @builder
+    def settings(self, **kwargs: Any) -> None:
+        self._settings = self._settings.copy() if self._settings else {}
+        self._settings.update(kwargs)
 
     @staticmethod
     def _delete_sql(**kwargs: Any) -> str:
@@ -884,7 +890,27 @@ class ClickHouseQueryBuilder(QueryBuilder):
         # this is good enough.
         if self._limit_by:
             querystring += self._limit_by_sql(**kwargs)
-        return super()._apply_pagination(querystring, **kwargs)
+        querystring = super()._apply_pagination(querystring, **kwargs)
+
+        # SETTINGS must come after LIMIT:
+        if self._settings:
+
+            def _format_value(v: object) -> str:
+                if isinstance(v, str):
+                    return f"'{v}'"
+                elif isinstance(v, bool):
+                    return str(v).lower()
+                elif isinstance(v, (int, float)):
+                    return str(v)
+                elif isinstance(v, dict):
+                    return f"{{{', '.join(f'{_format_value(k)}: {_format_value(v)}' for k, v in v.items())}}}"
+                raise TypeError(f"Unsupported SETTING value {type(v)}")
+
+            querystring += " SETTINGS {}".format(
+                ", ".join(f"{k}={_format_value(v)}" for k, v in sorted(self._settings.items()))
+            )
+
+        return querystring
 
     def _limit_by_sql(self, **kwargs: Any) -> str:
         (n, offset, by) = self._limit_by
