@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import warnings
 from copy import copy
+from enum import Enum
 from typing import Any
 
 from pypika.enums import Dialects
@@ -896,14 +897,11 @@ class ClickHouseQueryBuilder(QueryBuilder):
         if self._settings:
 
             def _format_value(v: object) -> str:
-                if isinstance(v, str):
-                    return f"'{v}'"
-                elif isinstance(v, bool):
-                    return str(v).lower()
-                elif isinstance(v, (int, float)):
-                    return str(v)
-                elif isinstance(v, dict):
-                    return f"{{{', '.join(f'{_format_value(k)}: {_format_value(v)}' for k, v in v.items())}}}"
+                if isinstance(v, dict):
+                    items = ", ".join(f"{_format_value(k)}: {_format_value(val)}" for k, val in v.items())
+                    return f"{{{items}}}"
+                if isinstance(v, (str, bool, int, float, Enum)):
+                    return ValueWrapper.get_formatted_value(v, **kwargs)
                 raise TypeError(f"Unsupported SETTING value {type(v)}")
 
             querystring += " SETTINGS {}".format(

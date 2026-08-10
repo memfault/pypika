@@ -1,3 +1,4 @@
+from enum import Enum
 from unittest import TestCase
 
 from pypika import (
@@ -47,6 +48,31 @@ class ClickHouseQueryTests(TestCase):
             str(query3),
             'SELECT "foo" FROM "abc" SETTINGS a_bool=true, a_map={\'a\': 1, \'b\': 2}, a_str=\'foo\', an_float=4.563, an_int=123',
         )
+
+    def test_settings_escapes_quotes_in_string_values(self) -> None:
+        t = Table('abc')
+        query = ClickHouseQuery.from_(t).select(t.foo).settings(a_str="it's", a_map={"o'clock": "y'all"})
+        self.assertEqual(
+            str(query),
+            'SELECT "foo" FROM "abc" SETTINGS a_map={\'o\'\'clock\': \'y\'\'all\'}, a_str=\'it\'\'s\'',
+        )
+
+    def test_settings_serializes_enum_values(self) -> None:
+        class StrEnum(str, Enum):
+            BAR = "bar"
+
+        class IntEnum(int, Enum):
+            ONE = 1
+
+        t = Table('abc')
+        query = ClickHouseQuery.from_(t).select(t.foo).settings(a_str=StrEnum.BAR, an_int=IntEnum.ONE)
+        self.assertEqual(str(query), 'SELECT "foo" FROM "abc" SETTINGS a_str=\'bar\', an_int=1')
+
+    def test_settings_rejects_unsupported_value_types(self) -> None:
+        t = Table('abc')
+        for value in (None, [1, 2], b"x"):
+            with self.subTest(value=value), self.assertRaises(TypeError):
+                str(ClickHouseQuery.from_(t).select(t.foo).settings(a_value=value))
 
 
 class ClickHouseDeleteTests(TestCase):

@@ -15,6 +15,9 @@ It is not supported by Memfault for external use.
 
 We disabled mypy in CI because it was 'red' before our changes.
 
+Fork builds carry a PEP 440 local version marker, ``<upstream version>+memfault.<n>``, so they are
+distinguishable from the upstream release they are based on.
+
 
 Abstract
 --------
